@@ -1244,7 +1244,11 @@ public class MainActivity extends Activity implements IReporter {
      *  the set ExploitRunner.stageAssets() can use, so anything listed here is
      *  guaranteed to pass the runtime check too. The check is by name where
      *  the manager keeps libksud.so and by content where it does not (SukiSU
-     *  renames its libs on every build); see ExploitRunner.findKsud. */
+     *  renames its libs on every build); see ExploitRunner.findKsud.
+     *
+     *  <p>Threading: the content check reads library bytes, and app libraries
+     *  run to hundreds of megabytes, so this must never run on the main
+     *  thread - the caller puts it on mExec and posts the result back. */
     private List<SuManagerEntry> scanSuManagers() {
         List<SuManagerEntry> out = new ArrayList<>();
         PackageManager pm = getPackageManager();
@@ -1258,34 +1262,64 @@ public class MainActivity extends Activity implements IReporter {
     }
 
     /** Restores the saved selection, dropping it if that app is gone or no
-     *  longer ships a ksud. */
+     *  longer ships a ksud. The scan runs off the main thread; the subtitle
+     *  repaints from the result. */
     private void loadSuManagerPref() {
         SharedPreferences sp = mDeCtx.getSharedPreferences("dfroot", MODE_PRIVATE);
         String saved = sp.getString("su_manager", null);
+        mExec.execute(() -> {
+            List<SuManagerEntry> managers = scanSuManagers();
+            List<String> found = new ArrayList<>();
+            String label = null;
+            for (SuManagerEntry e : managers) {
+                found.add(e.packageName);
+                if (e.packageName.equals(saved)) label = e.label.toString();
+            }
+            final String label2 = label;
+            mMain.post(() -> applySuManagerPref(saved, found, label2));
+        });
+    }
+
+    /** Main-thread half of loadSuManagerPref: keeps, or drops, the saved manager
+     *  selection against what the scan found, then paints the subtitle. */
+    private void applySuManagerPref(String saved, List<String> found, String label) {
+        if (isFinishing() || isDestroyed()) return;
         suManagerPkg = null;
         suManagerLabel = null;
-        if (saved != null) {
-            for (SuManagerEntry e : scanSuManagers()) {
-                if (e.packageName.equals(saved)) {
-                    suManagerPkg = e.packageName;
-                    suManagerLabel = e.label;
-                    break;
-                }
-            }
-            if (suManagerPkg == null) sp.edit().remove("su_manager").apply();
+        if (saved != null && found.contains(saved) && label != null) {
+            suManagerPkg = saved;
+            suManagerLabel = label;
+        } else if (saved != null) {
+            mDeCtx.getSharedPreferences("dfroot", MODE_PRIVATE)
+                    .edit().remove("su_manager").apply();
         }
         binding.suManagerSubtitle.setText(suManagerPkg == null
                 ? "Not selected - required"
                 : suManagerLabel + "  (" + suManagerPkg + ")");
         binding.suManagerSubtitle.setTextColor(suManagerPkg == null
                 ? 0xFFE57373 : 0xFF9E9E9E);
+        // The selection just changed off the main thread; Run has to follow it.
+        updateRunButton();
     }
 
     /** OneUI-style rounded popup list over the dim overlay - same look and feel
-     *  as the overflow menu, so the picker does not look like a stock spinner. */
+     *  as the overflow menu, so the picker does not look like a stock spinner.
+     *  The scan reads library bytes, so it runs on mExec and the popup opens
+     *  from the result; the row is live while it happens. */
     private void showSuManagerPopup() {
+        binding.rowSuManager.setEnabled(false);
+        mExec.execute(() -> {
+            final List<SuManagerEntry> apps = scanSuManagers();
+            mMain.post(() -> {
+                binding.rowSuManager.setEnabled(true);
+                showSuManagerPopup(apps);
+            });
+        });
+    }
+
+    private void showSuManagerPopup(List<SuManagerEntry> apps) {
+        if (isFinishing() || isDestroyed()) return;
         float md = getResources().getDisplayMetrics().density;
-        List<SuManagerEntry> apps = scanSuManagers();
         final android.widget.PopupWindow[] pwRef = {null};
 
         android.widget.LinearLayout box = new android.widget.LinearLayout(this);
