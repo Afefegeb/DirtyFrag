@@ -13,7 +13,7 @@ hardening) and keeps upstream's SU-manager agnostic design.
 ## Install
 
 1. Install the DirtyFrag APK from [Releases](https://github.com/mitschud/DirtyFrag/releases/latest).
-2. Install an SU manager that **ships `libksud.so`**:
+2. Install an SU manager that **ships `ksud`**:
    - Samsung - **required**:
      - [diabl0w's KernelSU](https://github.com/diabl0w/KernelSU/releases)
    - Other:
@@ -21,12 +21,18 @@ hardening) and keeps upstream's SU-manager agnostic design.
      - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest)
      - [KowSU](https://github.com/KOWX712/KernelSU/releases/latest)
      - [BakaSU](https://github.com/Baka-SU/BakaSU/releases/latest) (formerly ReSukiSU)
+     - [SukiSU Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest) - renames its
+       libraries on every build; DirtyFrag finds `ksud` inside them
 3. Open DirtyFrag, pick your manager in the **SU Manager** card, then press **Run exploit**.
 
 > [!WARNING]
 > Since 1.10 (upstream 3.2) DirtyFrag no longer bundles `ksud` - it is staged from the selected
 > manager's own `libksud.so`. A manager that does not ship that library cannot give you root. The
 > older advice to install a CI / Actions build of the manager no longer applies.
+>
+> SukiSU Ultra is the exception to the file name: it packages `ksud` as `lib<random letters>.so` so
+> that detectors cannot pin it, and DirtyFrag finds it there by content instead. It carries no
+> Samsung KDP/DEFEX handling, so on Samsung keep using diabl0w's build.
 
 A fresh install of DirtyFrag gets a new Android UID, so the grant in the manager has to be given
 again after every reinstall.

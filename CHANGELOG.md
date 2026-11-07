@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Managers
+- **SukiSU Ultra** is listed for non-Samsung devices. It does not ship `libksud.so` under that
+  name: its build renames the daemon to `lib<random lowercase letters>.so` every time, so the
+  picker used to skip it and Run stayed locked. The manager check now also recognises that payload
+  by content - a file of at least 1 MiB that carries both `/data/adb/ksud` (the daemon's install
+  path) and `kernelsu.ko` (the module late-load looks for). A fixed `libksud.so` is still found
+  first, by name alone, so every manager that worked before is found exactly as before and the
+  content scan only ever runs for apps that do not ship one.
+- The scan reads in 256 KiB chunks and stops at the first chunk that holds both strings. On the
+  SukiSU 4.3.0 manager only the 6.1 MB daemon is read, one chunk deep; the 15 KB JNI shim beside
+  it - which also carries `--package-name` - is rejected on size, and `libadbroot.so`,
+  `libkptools.so`, `libksud.so` and `libbootstrap.so` are never treated as the daemon whatever
+  they contain.
+- SukiSU stays off the Samsung list: its kernel has no KDP/DEFEX handling, so Samsung keeps
+  diabl0w's KernelSU.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.

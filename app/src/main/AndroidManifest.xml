@@ -6,9 +6,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Package visibility (Android 11+): the SU-manager picker enumerates every
-         installed app and keeps only the ones that actually ship libksud.so, so a
-         fixed <queries> allow-list is no longer enough. The app is sideloaded, so
-         the Play policy lint that flags this broad permission does not apply. -->
+         installed app and keeps only the ones that ship a ksud the exploit can
+         stage, so a fixed <queries> allow-list is no longer enough. The app is
+         sideloaded, so the Play policy lint that flags this broad permission
+         does not apply. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <application

@@ -90,7 +90,7 @@ public class MainActivity extends Activity implements IReporter {
      *  /data/user_de/0/df.root/, so every pref the exploit depends on must live
      *  there, not in credential-protected storage. */
     private Context mDeCtx;
-    /** Package name of the SU manager whose libksud.so gets staged, or null. */
+    /** Package name of the SU manager whose ksud gets staged, or null. */
     private String suManagerPkg;
     private CharSequence suManagerLabel;
     /** A failed run locks the Run button until reboot (page-cache patch). */
@@ -1240,16 +1240,17 @@ public class MainActivity extends Activity implements IReporter {
         }
     }
 
-    /** Every installed app carrying libksud.so in its native lib dir - exactly
+    /** Every installed app that ships a ksud the exploit can stage - exactly
      *  the set ExploitRunner.stageAssets() can use, so anything listed here is
-     *  guaranteed to pass the runtime check too. */
+     *  guaranteed to pass the runtime check too. The check is by name where
+     *  the manager keeps libksud.so and by content where it does not (SukiSU
+     *  renames its libs on every build); see ExploitRunner.findKsud. */
     private List<SuManagerEntry> scanSuManagers() {
         List<SuManagerEntry> out = new ArrayList<>();
         PackageManager pm = getPackageManager();
         for (ApplicationInfo ai : pm.getInstalledApplications(0)) {
             if (ai.packageName.equals(getPackageName())) continue;
-            if (ai.nativeLibraryDir == null) continue;
-            if (!new File(ai.nativeLibraryDir, "libksud.so").exists()) continue;
+            if (ExploitRunner.findKsud(ai) == null) continue;
             out.add(new SuManagerEntry(ai.packageName, pm.getApplicationLabel(ai)));
         }
         out.sort((a, b) -> a.label.toString().compareToIgnoreCase(b.label.toString()));
@@ -1257,7 +1258,7 @@ public class MainActivity extends Activity implements IReporter {
     }
 
     /** Restores the saved selection, dropping it if that app is gone or no
-     *  longer ships libksud.so. */
+     *  longer ships a ksud. */
     private void loadSuManagerPref() {
         SharedPreferences sp = mDeCtx.getSharedPreferences("dfroot", MODE_PRIVATE);
         String saved = sp.getString("su_manager", null);
@@ -1294,7 +1295,7 @@ public class MainActivity extends Activity implements IReporter {
 
         if (apps.isEmpty()) {
             TextView none = new TextView(this);
-            none.setText("No app with libksud.so found");
+            none.setText("No app shipping ksud found");
             none.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
             none.setPadding((int) (20 * md), (int) (12 * md), (int) (20 * md), (int) (12 * md));
             none.setTextColor(0xFF6E6E6E);
