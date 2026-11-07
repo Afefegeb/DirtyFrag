@@ -1246,16 +1246,21 @@ public class MainActivity extends Activity implements IReporter {
      *  the manager keeps libksud.so and by content where it does not (SukiSU
      *  renames its libs on every build); see ExploitRunner.findKsud.
      *
-     *  <p>Threading: the content check reads library bytes, and app libraries
-     *  run to hundreds of megabytes, so this must never run on the main
-     *  thread - the caller puts it on mExec and posts the result back. */
+     *  <p>Verdicts come from SuManagerCache, so an app is only probed when it
+     *  was installed or updated. The first scan of a new install still reads
+     *  library bytes, so this must never run on the main thread - the caller
+     *  puts it on mExec and posts the result back. */
     private List<SuManagerEntry> scanSuManagers() {
         List<SuManagerEntry> out = new ArrayList<>();
         PackageManager pm = getPackageManager();
-        for (ApplicationInfo ai : pm.getInstalledApplications(0)) {
-            if (ai.packageName.equals(getPackageName())) continue;
-            if (ExploitRunner.findKsud(ai) == null) continue;
-            out.add(new SuManagerEntry(ai.packageName, pm.getApplicationLabel(ai)));
+        for (String pkg : SuManagerCache.scan(this)) {
+            ApplicationInfo ai;
+            try {
+                ai = pm.getApplicationInfo(pkg, 0);
+            } catch (PackageManager.NameNotFoundException e) {
+                continue;
+            }
+            out.add(new SuManagerEntry(pkg, pm.getApplicationLabel(ai)));
         }
         out.sort((a, b) -> a.label.toString().compareToIgnoreCase(b.label.toString()));
         return out;

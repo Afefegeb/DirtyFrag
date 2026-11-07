@@ -15,6 +15,12 @@
   it - which also carries `--package-name` - is rejected on size, and `libadbroot.so`,
   `libkptools.so`, `libksud.so` and `libbootstrap.so` are never treated as the daemon whatever
   they contain.
+- Probing a library is only attempted when its name could be a renamed daemon (`lib` + lowercase
+  letters + `.so`, the shape SukiSU's build produces) and it is between 1 and 64 MiB, and no file
+  is read past 2 MiB. An app is probed once and then remembered with its versionCode and
+  update time (`SuManagerCache`), so a resume or a second tap on the card costs a package-list
+  pass and no file reads; an update or uninstall of the manager re-probes it. Run still re-probes
+  the selected manager before staging, so the cache can only affect the list.
 - SukiSU stays off the Samsung list: its kernel has no KDP/DEFEX handling, so Samsung keeps
   diabl0w's KernelSU.
 
